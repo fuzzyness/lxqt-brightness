@@ -4,7 +4,6 @@ use std::process::Command;
 
 #[derive(clap::Parser, Debug)]
 #[command(
-    author = "malbisu",
     version = "1.0",
     about = "Brightness Notifier for LXQt",
     long_about = "A simple command-line tool that displays a desktop notification when changing your display brightness using xbacklight. This program is intended to be used in conjunction with LXQt."
@@ -12,21 +11,49 @@ use std::process::Command;
 struct Args {
     /// Increase brightness level by a specified percentage
     /// (default: 5% if no value is provided)
-    #[arg(short = 'i', long = "increase", num_args = 0..=1, default_missing_value = "5")]
+    #[arg(
+        short = 'i',
+        long = "increase",
+        num_args = 0..=1,
+        default_missing_value = "5",
+        conflicts_with_all = &["set", "get"]
+    )]
     increase: Option<u8>,
 
     /// Decrease brightness level by a specified percentage
     /// (default: 5% if no value is provided)
-    #[arg(short = 'd', long = "decrease", num_args = 0..=1, default_missing_value = "5")]
+    #[arg(
+        short = 'd',
+        long = "decrease",
+        num_args = 0..=1,
+        default_missing_value = "5",
+        conflicts_with_all = &["set", "get"]
+    )]
     decrease: Option<u8>,
 
     /// Set brightness level to a specified percentage (1% to 100%)
-    #[arg(short = 's', long = "set", conflicts_with_all=&["increase", "decrease"])]
+    #[arg(
+        short = 's',
+        long = "set",
+        conflicts_with_all = &["increase", "decrease", "get"]
+    )]
     set: Option<u8>,
+
+    /// Display the current brightness level without making changes
+    #[arg(
+        short = 'g',
+        long = "get",
+        conflicts_with_all = &["increase", "decrease", "set"]
+    )]
+    get: bool,
 
     /// Notification timeout duration in milliseconds
     /// (default: 2000 milliseconds)
-    #[arg(short = 't', long = "timeout", default_value_t = 2000)]
+    #[arg(
+        short = 't',
+        long = "timeout",
+        default_value_t = 2000
+    )]
     timeout: i32,
 }
 
@@ -44,6 +71,33 @@ fn get_current_brightness() -> Option<u8> {
     let output_str = String::from_utf8_lossy(&output.stdout);
     let value: f64 = output_str.trim().parse().ok()?;
     Some(value.round() as u8)
+}
+
+/// Display the current brightness in a desktop notification.
+fn display_notification(timeout: i32) -> Option<u8> {
+    let brightness = get_current_brightness()?;
+    let body = format!("{}% Brightness", brightness);
+    let icon = if brightness < 33 {
+        "display-brightness-low"
+    } else if brightness < 66 {
+        "display-brightness-medium"
+    } else {
+        "display-brightness-high"
+    };
+
+    if let Err(e) = Notification::new()
+        .summary("Brightness")
+        .body(&body)
+        .icon(icon)
+        .timeout(timeout)
+        .show()
+    {
+        eprintln!("Error: failed to display notification: {}.", e);
+        return None;
+    }
+
+    println!("Current brightness: {}%", brightness);
+    Some(brightness)
 }
 
 /// Adjust the displays brightness level.
@@ -75,7 +129,16 @@ fn set_brightness_value(brightness: u8) -> bool {
 fn main() {
     let args = Args::parse();
 
-    // Process brightness change requests
+    // Retrieve and notify current brightness if --get flag is present.
+    if args.get {
+        if display_notification(args.timeout).is_none() {
+            std::process::exit(1);
+        }
+
+        std::process::exit(0);
+    }
+
+    // Process brightness change requests.
     if let Some(target) = args.set {
         if target < 1 || target > 100 {
             eprintln!("Error: brightness value must be between 1% and 100%.");
@@ -92,31 +155,8 @@ fn main() {
         }
     }
 
-    let current_brightness = match get_current_brightness() {
-        Some(val) => val,
-        None => {
-            eprintln!("Error: failed to retrieve current brightness level.");
-            std::process::exit(1);
-        }
-    };
-
-    // Prepare the desktop notification.
-    let body = format!("{}% Brightness", current_brightness);
-    let icon = if current_brightness < 33 {
-        "display-brightness-low"
-    } else if current_brightness < 66 {
-        "display-brightness-medium"
-    } else {
-        "display-brightness-high"
-    };
-
-    if let Err(e) = Notification::new()
-        .summary("Brightness")
-        .body(&body)
-        .icon(icon)
-        .timeout(args.timeout)
-        .show()
-    {
-        eprintln!("Error: failed to display notification: {}.", e);
+    // Retrieve and notify current brightness after any changes.
+    if display_notification(args.timeout).is_none() {
+        std::process::exit(1);
     }
 }
