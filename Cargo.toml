@@ -5,4 +5,12 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-notify-rust = "4.11.5"
+notify-rust = "4"
+
+[package.metadata.deb]
+maintainer = "Manuel Albisu-Bouza <malbisu@mailchao.com"
+depends = "libnotify4, xbacklight"
+license-file = "LICENSE"
+section = "utils"
+priority = "optional"
+copyright = "(C) 2025 Manuel Albisu-Bouza"

@@ -4,37 +4,42 @@ use std::process::Command;
 
 #[derive(clap::Parser, Debug)]
 #[command(
+    author = "Manuel Albisu-Bouza",
     version = "1.0",
     about = "Brightness Notifier for LXQt",
     long_about = "A simple command-line tool that displays a desktop notification when changing your display brightness using xbacklight. This program is intended to be used in conjunction with LXQt."
 )]
 struct Args {
     /// Increase brightness level by a specified percentage
-    /// (default: 5% if no value is provided)
+    /// (default: +5%)
     #[arg(
         short = 'i',
         long = "increase",
         num_args = 0..=1,
         default_missing_value = "5",
+        value_name = "PERCENTAGE",
         conflicts_with_all = &["set", "get"]
     )]
     increase: Option<u8>,
 
     /// Decrease brightness level by a specified percentage
-    /// (default: 5% if no value is provided)
+    /// (default: -5%)
     #[arg(
         short = 'd',
         long = "decrease",
         num_args = 0..=1,
         default_missing_value = "5",
+        value_name = "PERCENTAGE",
         conflicts_with_all = &["set", "get"]
     )]
     decrease: Option<u8>,
 
-    /// Set brightness level to a specified percentage (1% to 100%)
+    /// Set brightness level to a specified percentage
+    /// (range: 1% - 100%)
     #[arg(
         short = 's',
         long = "set",
+        value_name = "PERCENTAGE",
         conflicts_with_all = &["increase", "decrease", "get"],
         value_parser = clap::value_parser!(u8).range(1..=100)
     )]
@@ -49,26 +54,34 @@ struct Args {
     get: bool,
 
     /// Notification timeout duration in milliseconds
-    /// (default: 2000 milliseconds)
+    /// (default: 2000 ms)
     #[arg(
         short = 't',
         long = "timeout",
-        default_value_t = 2000
+        default_value_t = 2000,
+        value_name = "TIMEOUT DURATION IN MILLISECONDS"
     )]
     timeout: i32,
 
-    /// Fade time in milliseconds for changes in brightness level.
+    /// Fade time in milliseconds for changes in brightness level
+    /// (default: 250 ms, range: 0 - 60000 ms)
     #[arg(
+        short = 'f',
         long = "fade",
-        default_value_t = 250
+        default_value_t = 100,
+        value_name = "FADE TIME IN MILLISECONDS",
+        value_parser = clap::value_parser!(u32).range(..=60000)
     )]
     fade_time: u32,
 
-    /// Number of steps in the fade for changes in brightness level.
+    /// Number of steps in the fade for changes in brightness level
+    /// (default: 25 steps, range: 1 - 200 steps)
     #[arg(
+        short = 'p',
         long = "steps",
         default_value_t = 25,
-        value_parser = clap::value_parser!(u32).range(1..)
+        value_name = "NUMBER OF STEPS IN FADE",
+        value_parser = clap::value_parser!(u32).range(1..=200)
     )]
     steps: u32,
 }
@@ -134,7 +147,7 @@ fn adjust_brightness(args: &Args) -> bool {
     status.map_or(false, |s| s.success())
 }
 
-// Set the displays brightness level to a specified value.
+/// Set the displays brightness level to a specified value.
 fn set_brightness(brightness: u8, args: &Args) -> bool {
     let mut cmd = Command::new("xbacklight");
     cmd.arg("-set").arg(brightness.to_string());
