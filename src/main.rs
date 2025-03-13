@@ -119,6 +119,7 @@ fn display_notification(timeout: i32) -> Option<u8> {
         .body(&body)
         .icon(icon)
         .timeout(timeout)
+        .id(1)
         .show()
     {
         eprintln!("Error: failed to display notification: {}.", e);
