@@ -35,7 +35,8 @@ struct Args {
     #[arg(
         short = 's',
         long = "set",
-        conflicts_with_all = &["increase", "decrease", "get"]
+        conflicts_with_all = &["increase", "decrease", "get"],
+        value_parser = clap::value_parser!(u8).range(1..=100)
     )]
     set: Option<u8>,
 
@@ -55,6 +56,21 @@ struct Args {
         default_value_t = 2000
     )]
     timeout: i32,
+
+    /// Fade time in milliseconds for changes in brightness level.
+    #[arg(
+        long = "fade",
+        default_value_t = 250
+    )]
+    fade_time: u32,
+
+    /// Number of steps in the fade for changes in brightness level.
+    #[arg(
+        long = "steps",
+        default_value_t = 25,
+        value_parser = clap::value_parser!(u32).range(1..)
+    )]
+    steps: u32,
 }
 
 /// Retrieve the current brightness as a percentage.
@@ -111,18 +127,21 @@ fn adjust_brightness(args: &Args) -> bool {
         // No adjustment was requested.
         return true;
     }
+    cmd.arg("-time").arg(args.fade_time.to_string());
+    cmd.arg("-steps").arg(args.steps.to_string());
 
     let status = cmd.status();
     status.map_or(false, |s| s.success())
 }
 
 // Set the displays brightness level to a specified value.
-fn set_brightness_value(brightness: u8) -> bool {
-    let status = Command::new("xbacklight")
-        .arg("-set")
-        .arg(brightness.to_string())
-        .status();
+fn set_brightness(brightness: u8, args: &Args) -> bool {
+    let mut cmd = Command::new("xbacklight");
+    cmd.arg("-set").arg(brightness.to_string());
+    cmd.arg("-time").arg(args.fade_time.to_string());
+    cmd.arg("-steps").arg(args.steps.to_string());
 
+    let status = cmd.status();
     status.map_or(false, |s| s.success())
 }
 
@@ -140,11 +159,7 @@ fn main() {
 
     // Process brightness change requests.
     if let Some(target) = args.set {
-        if target < 1 || target > 100 {
-            eprintln!("Error: brightness value must be between 1% and 100%.");
-            std::process::exit(1);
-        }
-        if !set_brightness_value(target) {
+        if !set_brightness(target, &args) {
             eprintln!("Error: failed to set brightness to {}.", target);
             std::process::exit(1);
         }
