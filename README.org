@@ -2,15 +2,6 @@
 #+author: Manuel Albisu-Bouza
 #+email: malbisu@mailchao.com
 #+description: A simple CLI tool for controlling screen brightness and displaying notifications in LXQt.
-#+options: toc:nil
-
-* Table of Contents :TOC:
-- [[#overview][Overview]]
-- [[#usage][Usage]]
-- [[#installation][Installation]]
-  - [[#debian-and-derivatives][Debian (and derivatives)]]
-  - [[#cargo-installation][Cargo installation]]
-- [[#dependencies][Dependencies]]
 
 * Overview
 LXQt-brightness is a simple CLI tool that controls screen brightness and displays a desktop notification for LXQt using libnotify and xbacklight.
