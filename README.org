@@ -1,5 +1,46 @@
 #+title: README
-#+author: malbisu
+#+author: Manuel Albisu-Bouza
+#+email: malbisu@mailchao.com
+#+description: A simple CLI tool for controlling screen brightness and displaying notifications in LXQt.
+
+* Table of Contents :TOC:
+- [[#overview][Overview]]
+- [[#usage][Usage]]
+- [[#installation][Installation]]
+  - [[#cargo-installation][Cargo installation]]
+- [[#dependencies][Dependencies]]
 
 * Overview
-LXQt Brightness Notifier is a simple command-line tool that displays a desktop notification when changing your display brightness using xbacklight. This program is intended to be used in conjunction with LXQt.
+LXQt-brightness is a simple CLI tool that controls screen brightness and displays a desktop notification for LXQt using libnotify and xbacklight.
+
+* Usage
+#+begin_src shell
+$ lxqt-brightness [OPTIONS]
+$ lxqt-brightness --help
+#+end_src
+
+|------------+------------+-----------------------------------------+---------+----------|
+| Long Flag  | Short Flag | Description                             | Default | range    |
+|------------+------------+-----------------------------------------+---------+----------|
+| --increase | -i         | Increase brightness by PERCENTAGE       |       5 | -        |
+| --decrease | -d         | Decrease brightness by PERCENTAGE       |       5 | -        |
+| --set      | -s         | Set brightness to PERCENTAGE            |       - | 1-100    |
+| --get      | -g         | Show current brightness without changes |       - | -        |
+| --timeout  | -t         | Notification timeout in milliseconds    |    2000 | 0-120000 |
+| --fade     | -f         | Fade time in milliseconds               |     100 | 0-60000  |
+| --step     | -p         | Number of steps in fade                 |      25 | 1-200    |
+| --help     | -h         | Print help                              |       - | -        |
+| --version  | -V         | Print version                           |       - | -        |
+|------------+------------+-----------------------------------------+---------+----------|
+
+* Installation
+** Cargo installation
+#+begin_src shell
+$ git clone https://github.com/fuzzyness/lxqt-brightness
+$ cd lxqt-brightness
+$ cargo install --path .
+#+end_src
+
+* Dependencies
+- libnotify-bin
+- xbacklight

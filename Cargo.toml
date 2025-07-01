@@ -1,16 +1,18 @@
 [package]
-name = "lxqt-brightness-notifier"
-version = "0.1.0"
-edition = "2024"
+name         = "lxqt-brightness"
+version      = "1.1.0"
+edition      = "2024"
+build        = "build.rs"
+authors      = ["Manuel Albisu-Bouza <malbisu@mailchao.com>"]
+license      = "GPLv3.0"
+description  = "Simple CLI tool for controlling screen brightness and displaying notifications in LXQt."
+readme       = "README.org"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-notify-rust = "4"
 
 [package.metadata.deb]
-maintainer = "Manuel Albisu-Bouza <malbisu@mailchao.com"
-depends = "libnotify4, xbacklight"
-license-file = "LICENSE"
-section = "utils"
-priority = "optional"
-copyright = "(C) 2025 Manuel Albisu-Bouza"
+maintainer = "Manuel Albisu-Bouza <malbisu@mailchao.com>"
+section    = "utils"
+priority   = "optional"
+depends    = ["libnotify-bin", "xbacklight"]

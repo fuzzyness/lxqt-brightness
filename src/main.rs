@@ -1,51 +1,59 @@
 use clap::Parser;
-use notify_rust::Notification;
 use std::process::Command;
 
-#[derive(clap::Parser, Debug)]
+/// Command-line arguments for the brightness notifier.
+///
+/// Provides options to increase, decrease, set, or get the current
+/// brightness level, along with notification timing and fade settings.
+#[derive(Parser)]
 #[command(
     author = "Manuel Albisu-Bouza",
-    version = "1.0",
+    version = "1.1.0",
     about = "Brightness Notifier for LXQt",
-    long_about = "A simple command-line tool that displays a desktop notification when changing your display brightness using xbacklight. This program is intended to be used in conjunction with LXQt."
+    long_about = "A simple CLI tool that controls screen brightness \
+                  and displays a desktop notification for LXQt using \
+                  libnotify and xbacklight."
 )]
 struct Args {
-    /// Increase brightness level by a specified percentage
-    /// (default: +5%)
+    /// Increase brightness by PERCENTAGE
+    ///
+    /// [default: 5]
     #[arg(
         short = 'i',
         long = "increase",
+        value_name = "PERCENTAGE",
         num_args = 0..=1,
         default_missing_value = "5",
-        value_name = "PERCENTAGE",
         conflicts_with_all = &["set", "get"]
     )]
     increase: Option<u8>,
 
-    /// Decrease brightness level by a specified percentage
-    /// (default: -5%)
+    /// Decrease brightness by PERCENTAGE
+    ///
+    /// [default: 5]
     #[arg(
         short = 'd',
         long = "decrease",
+        value_name = "PERCENTAGE",
         num_args = 0..=1,
         default_missing_value = "5",
-        value_name = "PERCENTAGE",
         conflicts_with_all = &["set", "get"]
     )]
     decrease: Option<u8>,
 
-    /// Set brightness level to a specified percentage
-    /// (range: 1% - 100%)
+    /// Set brightness to PERCENTAGE
+    ///
+    /// [range: 1-100]
     #[arg(
         short = 's',
         long = "set",
         value_name = "PERCENTAGE",
-        conflicts_with_all = &["increase", "decrease", "get"],
-        value_parser = clap::value_parser!(u8).range(1..=100)
+        value_parser = clap::value_parser!(u8).range(1..=100),
+        conflicts_with_all = &["increase", "decrease", "get"]
     )]
     set: Option<u8>,
 
-    /// Display the current brightness level without making changes
+    /// Show current brightness without changes
     #[arg(
         short = 'g',
         long = "get",
@@ -53,139 +61,218 @@ struct Args {
     )]
     get: bool,
 
-    /// Notification timeout duration in milliseconds
-    /// (default: 2000 ms)
+    /// Notification timeout in milliseconds
+    ///
+    /// [range: 0-120000]
     #[arg(
         short = 't',
         long = "timeout",
+        value_name = "DURATION",
         default_value_t = 2000,
-        value_name = "TIMEOUT DURATION IN MILLISECONDS"
+        value_parser = clap::value_parser!(u32).range(0..=120000)
     )]
-    timeout: i32,
+    timeout: u32,
 
-    /// Fade time in milliseconds for changes in brightness level
-    /// (default: 250 ms, range: 0 - 60000 ms)
+    /// Fade time in milliseconds
+    ///
+    /// [range: 0-60000]
     #[arg(
         short = 'f',
         long = "fade",
+        value_name = "TIME",
         default_value_t = 100,
-        value_name = "FADE TIME IN MILLISECONDS",
-        value_parser = clap::value_parser!(u32).range(..=60000)
+        value_parser = clap::value_parser!(u16).range(0..=60000)
     )]
-    fade_time: u32,
+    fade_time: u16,
 
-    /// Number of steps in the fade for changes in brightness level
-    /// (default: 25 steps, range: 1 - 200 steps)
+    /// Number of steps in fade
+    ///
+    /// [range: 1-200]
     #[arg(
         short = 'p',
         long = "steps",
+        value_name = "STEPS",
         default_value_t = 25,
-        value_name = "NUMBER OF STEPS IN FADE",
-        value_parser = clap::value_parser!(u32).range(1..=200)
+        value_parser = clap::value_parser!(u8).range(1..=200)
     )]
-    steps: u32,
+    steps: u8,
 }
 
-/// Retrieve the current brightness as a percentage.
-fn get_current_brightness() -> Option<u8> {
-    let output = Command::new("xbacklight")
-        .arg("-get")
-        .output()
-        .ok()?;
+/// Exit the program with a success or failure code.
+///
+/// # Arguments
+///
+/// * `success` - If true, exit with code 0; otherwise exit with code 1.
+fn exit_with(success: bool) -> ! {
+    std::process::exit(if success { 0 } else { 1 });
+}
 
-    if !output.status.success() {
+/// Run an xbacklight command with the specified mode and value.
+///
+/// # Arguments
+///
+/// * `mode`  - The xbacklight mode flag (e.g., "-set", "-inc", "-dec").
+/// * `value` - The brightness percentage value.
+/// * `args`  - Command-line arguments containing timing parameters.
+///
+/// # Returns
+///
+/// `true` if the command is successful; `false` otherwise.
+fn run_brightness_cmd(mode: &str, value: u8, args: &Args) -> bool {
+    let v = value.to_string();
+    let t = args.fade_time.to_string();
+    let s = args.steps.to_string();
+
+    Command::new("xbacklight")
+        .args(&[
+            mode, &v,
+            "-time", &t,
+            "-steps", &s
+        ])
+        .status()
+        .map_or(false, |st| st.success())
+}
+
+/// Get the current screen brightness as a percentage.
+///
+/// Uses xbacklight to query the current brightness level.
+///
+/// # Returns
+///
+/// `Some(u8)` containing the brightness rounded to the nearest percent,
+/// or `None` if the command failed or output could not be parsed.
+fn get_current_brightness() -> Option<u8> {
+    let out = Command::new("xbacklight")
+        .arg("-get")
+        .output().ok()?;
+    if !out.status.success() {
         return None;
     }
+    let s = std::str::from_utf8(&out.stdout).ok()?;
+    let v = s.trim().parse::<f32>().ok()?;
+    Some(v.round() as u8)
+}
 
-    let output_str = String::from_utf8_lossy(&output.stdout);
-    let value: f64 = output_str.trim().parse().ok()?;
-    Some(value.round() as u8)
+/// Choose the appropriate icon based on the brightness percentage.
+///
+/// # Arguments
+///
+/// * `brightness` - Brightness percentage (0-100).
+///
+/// # Returns
+///
+/// A string slice corresponding to the appropriate symbolic icon name.
+fn icon_for(brightness: u8) -> &'static str {
+    match brightness {
+        0..=32  => "display-brightness-low-symbolic",
+        33..=65 => "display-brightness-medium-symbolic",
+        _       => "display-brightness-high-symbolic",
+    }
 }
 
 /// Display the current brightness in a desktop notification.
-fn display_notification(timeout: i32) -> Option<u8> {
+///
+/// Uses notify-send to show a summary with the brightness percentage.
+///
+/// # Arguments
+///
+/// * `timeout` - Notification timeout in milliseconds.
+///
+/// # Returns
+///
+/// `Some(u8)` containing the brightness if successful, or `None` on failure.
+fn display_notification(timeout: u32) -> Option<u8> {
     let brightness = get_current_brightness()?;
-    let body = format!("{}% Brightness", brightness);
-    let icon = if brightness < 33 {
-        "display-brightness-low"
-    } else if brightness < 66 {
-        "display-brightness-medium"
+    let summary    = format!("Brightness: {}%", brightness);
+    let icon       = icon_for(brightness);
+    let t          = timeout.to_string();
+
+    Command::new("notify-send")
+        .args(&[
+            "--app-name",   "lxqt-brightness",
+            "--icon",       icon,
+            "--replace-id", "1",
+            "--expire-time", &t,
+            &summary,
+        ])
+        .status()
+        .ok()?
+        .success()
+        .then(|| {
+            println!("Current brightness: {}%", brightness);
+            brightness
+        })
+}
+
+/// Adjust the display's brightness level based on the provided arguments.
+///
+/// Increases, decreases, or sets the brightness, ensuring it never drops
+/// below 1%.
+///
+/// # Arguments
+///
+/// * `args` - Parsed command-line arguments.
+///
+/// # Returns
+///
+/// `true` if the operation is successful; `false` otherwise.
+fn adjust_brightness(args: &Args) -> bool {
+    let current = get_current_brightness();
+
+    let (mode, value) = if let Some(inc) = args.increase {
+        if current.map_or(false, |c| c <= 1) {
+            ("-set", inc)
+        } else {
+            ("-inc", inc)
+        }
+    } else if let Some(dec) = args.decrease {
+        let val = current
+            .map(|c| c.saturating_sub(dec).max(1))
+            .unwrap_or(dec);
+        ("-set", val)
     } else {
-        "display-brightness-high"
+        return true;
     };
 
-    if let Err(e) = Notification::new()
-        .summary("Brightness")
-        .body(&body)
-        .icon(icon)
-        .timeout(timeout)
-        .id(1)
-        .show()
-    {
-        eprintln!("Error: failed to display notification: {}.", e);
-        return None;
-    }
-
-    println!("Current brightness: {}%", brightness);
-    Some(brightness)
+    run_brightness_cmd(mode, value, args)
 }
 
-/// Adjust the displays brightness level.
-fn adjust_brightness(args: &Args) -> bool {
-    let mut cmd = Command::new("xbacklight");
-    if let Some(inc) = args.increase {
-        cmd.arg("-inc").arg(inc.to_string());
-    } else if let Some(dec) = args.decrease {
-        cmd.arg("-dec").arg(dec.to_string());
-    } else {
-        // No adjustment was requested.
-        return true;
-    }
-    cmd.arg("-time").arg(args.fade_time.to_string());
-    cmd.arg("-steps").arg(args.steps.to_string());
-
-    let status = cmd.status();
-    status.map_or(false, |s| s.success())
-}
-
-/// Set the displays brightness level to a specified value.
+/// Set the display's brightness level to a specified value.
+///
+/// # Arguments
+///
+/// * `brightness` - Desired brightness percentage (1-100).
+/// * `args`       - Parsed command-line arguments.
+///
+/// # Returns
+///
+/// `true` if successful; `false` otherwise.
 fn set_brightness(brightness: u8, args: &Args) -> bool {
-    let mut cmd = Command::new("xbacklight");
-    cmd.arg("-set").arg(brightness.to_string());
-    cmd.arg("-time").arg(args.fade_time.to_string());
-    cmd.arg("-steps").arg(args.steps.to_string());
-
-    let status = cmd.status();
-    status.map_or(false, |s| s.success())
+    run_brightness_cmd("-set", brightness, args)
 }
 
+/// Program entry point.
+///
+/// Parses arguments and executes the requested action, then displays
+/// a notification on exit.
 fn main() {
     let args = Args::parse();
 
-    // Retrieve and notify current brightness if --get flag is present.
     if args.get {
-        if display_notification(args.timeout).is_none() {
-            std::process::exit(1);
-        }
-
-        std::process::exit(0);
+        exit_with(display_notification(args.timeout).is_some());
     }
 
-    // Process brightness change requests.
-    if let Some(target) = args.set {
-        if !set_brightness(target, &args) {
-            eprintln!("Error: failed to set brightness to {}.", target);
-            std::process::exit(1);
+    if let Some(value) = args.set {
+        if !set_brightness(value, &args) {
+            eprintln!("Failed to set brightness to {}.", value);
+            exit_with(false);
         }
-    } else if args.increase.is_some() || args.decrease.is_some() {
-        if !adjust_brightness(&args) {
-            eprintln!("Error: failed to adjust the brightness level.");
-            std::process::exit(1);
-        }
+    } else if (args.increase.is_some() || args.decrease.is_some())
+        && !adjust_brightness(&args)
+    {
+        eprintln!("Failed to adjust the brightness.");
+        exit_with(false);
     }
 
-    // Retrieve and notify current brightness after any changes.
-    if display_notification(args.timeout).is_none() {
-        std::process::exit(1);
-    }
+    exit_with(display_notification(args.timeout).is_some());
 }
