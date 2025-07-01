@@ -2,11 +2,13 @@
 #+author: Manuel Albisu-Bouza
 #+email: malbisu@mailchao.com
 #+description: A simple CLI tool for controlling screen brightness and displaying notifications in LXQt.
+#+options: toc:nil
 
 * Table of Contents :TOC:
 - [[#overview][Overview]]
 - [[#usage][Usage]]
 - [[#installation][Installation]]
+  - [[#debian-and-derivatives][Debian (and derivatives)]]
   - [[#cargo-installation][Cargo installation]]
 - [[#dependencies][Dependencies]]
 
@@ -34,6 +36,14 @@ $ lxqt-brightness --help
 |------------+------------+-----------------------------------------+---------+----------|
 
 * Installation
+** Debian (and derivatives)
+Download the latest .deb file from [[https://github.com/fuzzyness/lxqt-brightness/releases][releases]].
+
+#+begin_src shell
+$ sudo apt update
+$ sudo apt install ./path/to/package.deb
+#+end_src
+
 ** Cargo installation
 #+begin_src shell
 $ git clone https://github.com/fuzzyness/lxqt-brightness
