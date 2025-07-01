@@ -6,6 +6,8 @@
 * Overview
 LXQt-brightness is a simple CLI tool that controls screen brightness and displays a desktop notification for LXQt using libnotify and xbacklight.
 
+[[file:assets/demo.gif][lxqt-brightness demo]]
+
 * Usage
 #+begin_src shell
 $ lxqt-brightness [OPTIONS]
@@ -27,12 +29,10 @@ $ lxqt-brightness --help
 |------------+------------+-----------------------------------------+---------+----------|
 
 * Installation
-** Debian (and derivatives)
-Download the latest .deb file from [[https://github.com/fuzzyness/lxqt-brightness/releases][releases]].
+Install the required dependencies.
 
 #+begin_src shell
-$ sudo apt update
-$ sudo apt install ./path/to/package.deb
+$ sudo apt install xbacklight libnotify-bin
 #+end_src
 
 ** Cargo installation
@@ -40,6 +40,14 @@ $ sudo apt install ./path/to/package.deb
 $ git clone https://github.com/fuzzyness/lxqt-brightness
 $ cd lxqt-brightness
 $ cargo install --path .
+#+end_src
+
+** Debian (and derivatives)
+Download the latest .deb file from [[https://github.com/fuzzyness/lxqt-brightness/releases][releases]].
+
+#+begin_src shell
+$ sudo apt update
+$ sudo apt install ./path/to/package.deb
 #+end_src
 
 * Dependencies
