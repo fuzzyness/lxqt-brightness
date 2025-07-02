@@ -52,6 +52,54 @@ $ sudo apt update
 $ sudo apt install ./path/to/package.deb
 #+end_src
 
+** Set keyboard shortcut on LXQt
+To add a keyboard shortcut, head to Preferences > LXQt Settings > Shortcut Keys, then click *Add*.
+
+Give the shortcut a description and shortcut key, then click the *Command* button.
+
+Type =lxqt-brightness --increase= into the message box then click *OK*; repeat the process for =lxqt-brightness --decrease=.
+
 * Dependencies
 - libnotify-bin
 - xbacklight
+
+* Common issues
+** Keyboard shortcut not working on cargo install
+If your keyboard shortcuts don't work after installing *lxqt-brightness* via cargo install, try the following:
+
+#+begin_src shell
+$ mkdir ~/.local/bin/
+$ ln -s $CARGO_HOME/bin/lxqt-brightness ~/.local/bin/lxqt-brightness
+#+end_src
+
+This should fix the issue assuming that =~/.local/bin/= is in your path.
+
+If =~/.local/bin= is not in your system path, add the following to your =~/.bashrc=.
+
+#+begin_src shell
+# add directories to $PATH
+$ export PATH="$(find ~/.local/bin -type d | paste -sd ':' -):$PATH"
+#+end_src
+
+** No outputs have backlight property error
+This issue might occur on some computers with intel CPU's.
+
+Run the following command and take note of the output.
+
+#+begin_src shell
+$ ls /sys/class/backlight
+#+end_src
+
+in my case, the command returns *intel_backlight*.
+
+Run the following command to create the file =/usr/share/X11/xorg.conf.d/20-intel.conf= (requires sudo). Replace *intel_backlight* with the output of the previous command.
+
+#+begin_src  shell
+$ sudo tee /usr/share/X11/xorg.conf.d/20-intel.conf > /dev/null << 'EOF'
+Section "Device"
+    Identifier "Intel Graphics"
+    Driver "intel"
+    Option "Backlight" "intel_backlight"
+EndSection
+EOF
+#+end_src
